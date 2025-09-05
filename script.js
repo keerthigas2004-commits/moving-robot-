@@ -1,80 +1,68 @@
-// Teachable Machine model URL
-const URL = "https://teachablemachine.withgoogle.com/models/t0_vFD2BF/";  // replace with your model link
+// Teachable Machine Model URL
+const URL = "https://teachablemachine.withgoogle.com/models/EEx8BEFcM/";
+let model, ctx, labelContainer, maxPredictions;
 
-// ThingSpeak details
-const WRITE_API_KEY = "WIWI6TCB3P7PP8P0"; // replace with your Write API Key
-const CHANNEL_ID = "2885963";       // replace with your channel ID
+// ThingSpeak API details
+const THINGSPEAK_API_KEY = "D3DGCRWFC4SVQ7D3";  // replace with your key
+const FIELD1_URL = "https://api.thingspeak.com/update?api_key=" + THINGSPEAK_API_KEY + "&field1=1";
+const FIELD2_URL = "https://api.thingspeak.com/update?api_key=" + THINGSPEAK_API_KEY + "&field2=1";
 
-let model, imageElement;
+// Load the model
+async function loadModel() {
+    const modelURL = URL + "model.json";
+    const metadataURL = URL + "metadata.json";
+    model = await tmPose.load(modelURL, metadataURL);
+    maxPredictions = model.getTotalClasses();
 
-// Load model
-async function init() {
-  const modelURL = URL + "model.json";
-  const metadataURL = URL + "metadata.json";
+    labelContainer = document.getElementById("label-container");
+    for (let i = 0; i < maxPredictions; i++) {
+        labelContainer.appendChild(document.createElement("div"));
+    }
 
-  model = await tmImage.load(modelURL, metadataURL);
-  console.log("Model loaded");
+    const canvas = document.getElementById("canvas");
+    ctx = canvas.getContext("2d");
 }
+loadModel();
 
-// When image is uploaded
-document.getElementById("imageUpload").addEventListener("change", (event) => {
-  const file = event.target.files[0];
-  const reader = new FileReader();
+// Handle file upload and prediction
+async function predictFromFile() {
+    const fileInput = document.getElementById("imageUpload");
+    if (!fileInput.files || fileInput.files.length === 0) {
+        alert("Please select an image file first!");
+        return;
+    }
 
-  reader.onload = function(e) {
-    const img = document.getElementById("preview");
-    img.src = e.target.result;
-    img.style.display = "block";
-    imageElement = img;
+    const img = new Image();
+    img.src = URL.createObjectURL(fileInput.files[0]);
+    img.onload = async function () {
+        const canvas = document.getElementById("canvas");
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0, img.width, img.height);
 
-    predict();
-  };
-  reader.readAsDataURL(file);
-});
+        // Run prediction
+        const { pose, posenetOutput } = await model.estimatePose(canvas);
+        const prediction = await model.predict(posenetOutput);
 
-// Predict and send to ThingSpeak
-async function predict() {
-  if (!model) {
-    alert("Model not loaded yet!");
-    return;
-  }
+        let bestClass = "";
+        let bestProb = 0;
 
-  const prediction = await model.predict(imageElement);
+        for (let i = 0; i < maxPredictions; i++) {
+            const prob = prediction[i].probability.toFixed(2);
+            const classPrediction = prediction[i].className + ": " + prob;
+            labelContainer.childNodes[i].innerHTML = classPrediction;
 
-  // Show probabilities for each class
-  let resultText = "Predictions:\n";
-  prediction.forEach(p => {
-    resultText += `${p.className}: ${(p.probability * 100).toFixed(2)}%\n`;
-  });
-  document.getElementById("result").innerText = resultText;
+            if (prob > bestProb) {
+                bestProb = prob;
+                bestClass = prediction[i].className;
+            }
+        }
 
-  // Find the best class
-  let bestClass = prediction.reduce((prev, current) =>
-    (prev.probability > current.probability) ? prev : current
-  ).className;
-
-  // Send to ThingSpeak
-  if (bestClass.toLowerCase() === "forward") {
-    sendToThingSpeak(1, 0);
-  } else if (bestClass.toLowerCase() === "backward") {
-    sendToThingSpeak(0, 1);
-  }
+        // Send data to ThingSpeak
+        if (bestClass.toLowerCase().includes("forward")) {
+            fetch(FIELD1_URL);
+        } else if (bestClass.toLowerCase().includes("backward")) {
+            fetch(FIELD2_URL);
+        }
+    };
 }
-
-// Send to ThingSpeak
-function sendToThingSpeak(forwardValue, backwardValue) {
-  const url = `https://api.thingspeak.com/update?api_key=${WRITE_API_KEY}&field1=${forwardValue}&field2=${backwardValue}`;
-
-  fetch(url)
-    .then(response => {
-      if (response.ok) {
-        console.log("Sent to ThingSpeak:", forwardValue, backwardValue);
-      } else {
-        console.error("ThingSpeak error");
-      }
-    })
-    .catch(err => console.error("Fetch error:", err));
-}
-
-// Initialize model
-init();
