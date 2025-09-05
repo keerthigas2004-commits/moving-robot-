@@ -2,12 +2,11 @@
 const URL = "https://teachablemachine.withgoogle.com/models/EEx8BEFcM/";
 let model, ctx, labelContainer, maxPredictions;
 
-// ThingSpeak API details
-const THINGSPEAK_API_KEY = "D3DGCRWFC4SVQ7D3";  // replace with your key
-const FIELD1_URL = "https://api.thingspeak.com/update?api_key=" + THINGSPEAK_API_KEY + "&field1=1";
-const FIELD2_URL = "https://api.thingspeak.com/update?api_key=" + THINGSPEAK_API_KEY + "&field2=1";
+// ThingSpeak Write API key
+const WRITE_API_KEY = "D3DGCRWFC4SVQ7D3";  
+const CHANNEL_ID = 3063067;
 
-// Load the model
+// Load model
 async function loadModel() {
     const modelURL = URL + "model.json";
     const metadataURL = URL + "metadata.json";
@@ -24,7 +23,20 @@ async function loadModel() {
 }
 loadModel();
 
-// Handle file upload and prediction
+// Send data to ThingSpeak (POST request)
+function sendToThingSpeak(field, value) {
+    const url = "https://api.thingspeak.com/update";
+    fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: `api_key=${WRITE_API_KEY}&${field}=${value}`
+    })
+    .then(res => res.text())
+    .then(data => console.log("ThingSpeak response:", data))
+    .catch(err => console.error("ThingSpeak error:", err));
+}
+
+// Predict from uploaded file
 async function predictFromFile() {
     const fileInput = document.getElementById("imageUpload");
     if (!fileInput.files || fileInput.files.length === 0) {
@@ -58,11 +70,11 @@ async function predictFromFile() {
             }
         }
 
-        // Send data to ThingSpeak
+        // Send result to ThingSpeak
         if (bestClass.toLowerCase().includes("forward")) {
-            fetch(FIELD1_URL);
+            sendToThingSpeak("field1", 1);
         } else if (bestClass.toLowerCase().includes("backward")) {
-            fetch(FIELD2_URL);
+            sendToThingSpeak("field2", 1);
         }
     };
 }
