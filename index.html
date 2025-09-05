@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Teachable Machine with ThingSpeak</title>
+  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js"></script>
+  <script src="script.js" defer></script>
+</head>
+<body>
+  <h2>Upload Image for Prediction</h2>
+  <input type="file" id="imageUpload" accept="image/*">
+  <br><br>
+  <img id="uploadedImage" width="300" style="display:none;">
+  <h3 id="prediction">Prediction will appear here...</h3>
+
+  <h3>ThingSpeak Values Sent:</h3>
+  <p>Forward (field1): <span id="forwardVal">0</span></p>
+  <p>Backward (field2): <span id="backwardVal">0</span></p>
+</body>
+</html>
