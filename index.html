@@ -1,22 +1,17 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Teachable Machine Pose Model</title>
+  <meta charset="UTF-8" />
+  <title>Pose Detection with ThingSpeak</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/pose@0.8/dist/teachablemachine-pose.min.js"></script>
 </head>
 <body>
-  <h2>Teachable Machine Pose Model</h2>
-
+  <h2>Pose Detection & ThingSpeak Integration</h2>
   <input type="file" id="imageUpload" accept="image/*">
   <button onclick="predictFromFile()">Predict</button>
-
   <div id="label-container"></div>
   <canvas id="canvas"></canvas>
-
-  <!-- TensorFlow.js -->
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
-  <!-- Teachable Machine Pose -->
-  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/pose@0.8/dist/teachablemachine-pose.min.js"></script>
-  <!-- Your script -->
   <script src="script.js"></script>
 </body>
 </html>
