@@ -1,61 +1,80 @@
-// 🔗 Replace this with your Teachable Machine model URL
-const URL = "https://teachablemachine.withgoogle.com/models/t0_vFD2BF/";
+// Teachable Machine model URL
+const URL = "https://teachablemachine.withgoogle.com/models/t0_vFD2BF/";  // replace with your model link
 
-// 🔑 Replace with your ThingSpeak Write API Key
-const WRITE_API_KEY = "WIWI6TCB3P7PP8P0";
+// ThingSpeak details
+const WRITE_API_KEY = "WIWI6TCB3P7PP8P0"; // replace with your Write API Key
+const CHANNEL_ID = "2885963";       // replace with your channel ID
 
-let model, maxPredictions;
+let model, imageElement;
 
+// Load model
 async function init() {
   const modelURL = URL + "model.json";
   const metadataURL = URL + "metadata.json";
+
   model = await tmImage.load(modelURL, metadataURL);
-  maxPredictions = model.getTotalClasses();
+  console.log("Model loaded");
 }
 
-init();
-
-document.getElementById("imageUpload").addEventListener("change", handleImage);
-
-async function handleImage(event) {
+// When image is uploaded
+document.getElementById("imageUpload").addEventListener("change", (event) => {
   const file = event.target.files[0];
-  const img = document.getElementById("uploadedImage");
-  img.src = URL.createObjectURL(file);
-  img.style.display = "block";
+  const reader = new FileReader();
 
-  img.onload = async () => {
-    const prediction = await model.predict(img);
+  reader.onload = function(e) {
+    const img = document.getElementById("preview");
+    img.src = e.target.result;
+    img.style.display = "block";
+    imageElement = img;
 
-    // Find best prediction
-    let bestClass = prediction[0].className;
-    let bestProb = prediction[0].probability;
-    for (let i = 1; i < prediction.length; i++) {
-      if (prediction[i].probability > bestProb) {
-        bestClass = prediction[i].className;
-        bestProb = prediction[i].probability;
-      }
-    }
-
-    // Show prediction
-    document.getElementById("prediction").innerText =
-      "Prediction: " + bestClass + " (" + (bestProb * 100).toFixed(2) + "%)";
-
-    // Send to ThingSpeak
-    if (bestClass.toLowerCase() === "forward") {
-      sendToThingSpeak(1, 0);
-    } else if (bestClass.toLowerCase() === "backward") {
-      sendToThingSpeak(0, 1);
-    }
+    predict();
   };
+  reader.readAsDataURL(file);
+});
+
+// Predict and send to ThingSpeak
+async function predict() {
+  if (!model) {
+    alert("Model not loaded yet!");
+    return;
+  }
+
+  const prediction = await model.predict(imageElement);
+
+  // Show probabilities for each class
+  let resultText = "Predictions:\n";
+  prediction.forEach(p => {
+    resultText += `${p.className}: ${(p.probability * 100).toFixed(2)}%\n`;
+  });
+  document.getElementById("result").innerText = resultText;
+
+  // Find the best class
+  let bestClass = prediction.reduce((prev, current) =>
+    (prev.probability > current.probability) ? prev : current
+  ).className;
+
+  // Send to ThingSpeak
+  if (bestClass.toLowerCase() === "forward") {
+    sendToThingSpeak(1, 0);
+  } else if (bestClass.toLowerCase() === "backward") {
+    sendToThingSpeak(0, 1);
+  }
 }
 
+// Send to ThingSpeak
 function sendToThingSpeak(forwardValue, backwardValue) {
   const url = `https://api.thingspeak.com/update?api_key=${WRITE_API_KEY}&field1=${forwardValue}&field2=${backwardValue}`;
+
   fetch(url)
-    .then(() => {
-      document.getElementById("forwardVal").innerText = forwardValue;
-      document.getElementById("backwardVal").innerText = backwardValue;
-      console.log("Sent to ThingSpeak:", forwardValue, backwardValue);
+    .then(response => {
+      if (response.ok) {
+        console.log("Sent to ThingSpeak:", forwardValue, backwardValue);
+      } else {
+        console.error("ThingSpeak error");
+      }
     })
-    .catch(error => console.error("Error:", error));
+    .catch(err => console.error("Fetch error:", err));
 }
+
+// Initialize model
+init();
